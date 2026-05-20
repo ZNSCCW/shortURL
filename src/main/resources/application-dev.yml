@@ -1,0 +1,6 @@
+# Dev profile: 继承 application.properties 的全部默认配置，仅覆盖以下项
+spring:
+  h2:
+    console:
+      enabled: true   # dev 环境开启 H2 控制台
+      path: /h2-console

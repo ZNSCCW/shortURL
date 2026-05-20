@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理面板 - ShortURL</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0c0c1d 0%, #1a1a3e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .top-nav .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6c63ff, #3f8efc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .top-nav .nav-btns { display: flex; gap: 0.75rem; }
+        .top-nav button, .top-nav a button {
+            padding: 0.5rem 1.2rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.25s;
+        }
+        .top-nav button:hover { background: rgba(255,255,255,0.12); }
+
+        .main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        .tabs button {
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.25s;
+        }
+        .tabs button.active {
+            background: rgba(108,99,255,0.2);
+            border-color: #6c63ff;
+            color: #fff;
+        }
+        .tabs button:hover { background: rgba(255,255,255,0.08); }
+
+        .card {
+            background: rgba(30, 30, 60, 0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1.2rem;
+            color: #ccc;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.7rem 0.8rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        th { color: #888; font-weight: 500; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
+        td { color: #ddd; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-super { background: rgba(108,99,255,0.2); color: #6c63ff; }
+        .badge-admin { background: rgba(63,142,252,0.2); color: #3f8efc; }
+        .badge-yes { background: rgba(46,125,50,0.2); color: #4caf50; }
+        .badge-no { background: rgba(255,82,82,0.2); color: #ff5252; }
+
+        .btn {
+            padding: 0.5rem 1.2rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.25s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #6c63ff, #3f8efc);
+            color: #fff;
+        }
+        .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.75rem;
+            border-radius: 6px;
+        }
+        .btn-danger { background: rgba(255,82,82,0.2); color: #ff5252; border: 1px solid rgba(255,82,82,0.3); }
+        .btn-danger:hover { background: rgba(255,82,82,0.3); }
+        .btn-warn { background: rgba(255,152,0,0.2); color: #ff9800; border: 1px solid rgba(255,152,0,0.3); }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .form-row input, .form-row select {
+            padding: 0.6rem 1rem;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            flex: 1;
+        }
+        .form-row select { appearance: none; }
+        .form-row select option { background: #1a1a3e; color: #fff; }
+        .form-row input:focus, .form-row select:focus { border-color: #6c63ff; }
+
+        .error-msg {
+            color: #ff5252;
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.2);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            margin: 0.75rem 0;
+            font-size: 0.85rem;
+            display: none;
+        }
+        .error-msg.show { display: block; }
+
+        .toast {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: #2e7d32;
+            color: #fff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.show { opacity: 1; transform: translateX(0); }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: rgba(30, 30, 60, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 380px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .modal h2 { text-align: center; }
+        .modal input { width: 100%; margin-bottom: 0.75rem; }
+        .modal .btn { width: 100%; margin-top: 0.5rem; }
+        .modal .close-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1.2rem;
+            float: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <span class="brand">⚙️ ShortURL 管理面板</span>
+        <div class="nav-btns">
+            <span id="loginInfo" style="color:#888;font-size:0.85rem;line-height:2.2;"></span>
+            <a href="/"><button>🏠 返回首页</button></a>
+            <button onclick="doLogout()">退出</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="tabs">
+            <button class="active" onclick="switchTab('urls')">📊 URL 管理</button>
+            <button id="tabAdmins" onclick="switchTab('admins')">👥 管理员</button>
+            <button onclick="switchTab('password')">🔑 修改密码</button>
+        </div>
+
+        <!-- URL Management Tab -->
+        <div class="tab-content active" id="tab-urls">
+            <div class="card">
+                <h2 style="display:flex;justify-content:space-between;align-items:center;">
+                    所有短链接
+                    <span id="batchActions" style="display:none;">
+                        <span id="selectedCount" style="color:#6c63ff;font-size:0.85rem;margin-right:0.75rem;"></span>
+                        <button class="btn btn-danger btn-sm" onclick="batchDeleteUrls()">🗑 批量删除</button>
+                    </span>
+                </h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:40px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" style="cursor:pointer;"></th>
+                            <th>ID</th><th>短码</th><th>原始链接</th><th>访问次数</th><th>创建者</th><th>创建时间</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="urlTableBody">
+                        <tr><td colspan="8" style="text-align:center;color:#666;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Admin Management Tab -->
+        <div class="tab-content" id="tab-admins">
+            <div class="card">
+                <h2>管理员列表</h2>
+                <div class="form-row">
+                    <input type="text" id="newAdminUsername" placeholder="用户名">
+                    <input type="password" id="newAdminPassword" placeholder="密码">
+                    <select id="newAdminRole">
+                        <option value="ADMIN">ADMIN</option>
+                        <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="createAdmin()">创建管理员</button>
+                </div>
+                <div class="error-msg" id="adminError"></div>
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>用户名</th><th>角色</th><th>状态</th><th>创建时间</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="adminTableBody">
+                        <tr><td colspan="6" style="text-align:center;color:#666;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Change Password Tab -->
+        <div class="tab-content" id="tab-password">
+            <div class="card">
+                <h2>修改密码</h2>
+                <div class="form-row" style="flex-direction:column;max-width:400px;">
+                    <input type="password" id="oldPassword" placeholder="原密码">
+                    <input type="password" id="newPassword" placeholder="新密码">
+                    <button class="btn btn-primary" onclick="changePassword()">修改密码</button>
+                </div>
+                <div class="error-msg" id="pwdError"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let currentRole = '';
+
+        // ========== Init ==========
+        async function init() {
+            try {
+                const resp = await fetch('/api/auth/me');
+                const data = await resp.json();
+                if (!data.loggedIn) {
+                    window.location.href = '/';
+                    return;
+                }
+                currentRole = data.role;
+                document.getElementById('loginInfo').textContent = `${data.username} (${data.role})`;
+                if (data.role !== 'SUPER_ADMIN') {
+                    document.getElementById('tabAdmins').style.display = 'none';
+                }
+                loadUrls();
+            } catch {
+                window.location.href = '/';
+            }
+        }
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tabs button').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            event.target.classList.add('active');
+            if (name === 'urls') loadUrls();
+            if (name === 'admins') loadAdmins();
+        }
+
+        // ========== URL Management ==========
+        async function loadUrls() {
+            const tbody = document.getElementById('urlTableBody');
+            document.getElementById('selectAll').checked = false;
+            document.getElementById('batchActions').style.display = 'none';
+            try {
+                const resp = await fetch('/api/admin/urls');
+                if (resp.status === 403) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">权限不足</td></tr>';
+                    return;
+                }
+                const data = await resp.json();
+                if (!Array.isArray(data) || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#666;">暂无数据</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(item => `
+                    <tr>
+                        <td><input type="checkbox" class="url-checkbox" value="${escapeHtml(item.shortCode)}" onchange="updateBatchUI()" style="cursor:pointer;"></td>
+                        <td>${item.id}</td>
+                        <td style="color:#6c63ff;font-weight:600;">${escapeHtml(item.shortCode)}</td>
+                        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.originalUrl)}</td>
+                        <td>${item.accessCount}</td>
+                        <td style="color:#888;font-size:0.8rem;">${item.createdBy ? item.createdBy.substring(0,8)+'...' : '匿名'}</td>
+                        <td>${formatDate(item.createdAt)}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteUrl('${item.shortCode}')">删除</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ff5252;">加载失败</td></tr>';
+            }
+        }
+
+        async function deleteUrl(shortCode) {
+            if (!confirm(`确定要删除短码 "${shortCode}" 吗？`)) return;
+            try {
+                const resp = await fetch('/api/admin/urls/' + encodeURIComponent(shortCode), { method: 'DELETE' });
+                if (resp.ok) {
+                    showToast('已删除');
+                    loadUrls();
+                } else {
+                    const data = await resp.json();
+                    showToast(data.error || '删除失败');
+                }
+            } catch {
+                showToast('网络错误');
+            }
+        }
+
+        // ========== 批量操作 ==========
+        function getSelectedCodes() {
+            return Array.from(document.querySelectorAll('.url-checkbox:checked')).map(cb => cb.value);
+        }
+
+        function updateBatchUI() {
+            const selected = getSelectedCodes();
+            document.getElementById('batchActions').style.display = selected.length > 0 ? '' : 'none';
+            document.getElementById('selectedCount').textContent = `已选 ${selected.length}`;
+        }
+
+        function toggleSelectAll(masterCheckbox) {
+            const checked = masterCheckbox.checked;
+            document.querySelectorAll('.url-checkbox').forEach(cb => { cb.checked = checked; });
+            updateBatchUI();
+        }
+
+        async function batchDeleteUrls() {
+            const codes = getSelectedCodes();
+            if (codes.length === 0) return;
+            if (!confirm(`确定要删除选中的 ${codes.length} 条记录吗？`)) return;
+            try {
+                const resp = await fetch('/api/admin/urls/batch-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codes })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    showToast(`已批量删除 ${data.count} 条`);
+                    loadUrls();
+                } else {
+                    showToast(data.error || '批量删除失败');
+                }
+            } catch {
+                showToast('网络错误');
+            }
+        }
+
+        // ========== Admin Management ==========
+        async function loadAdmins() {
+            if (currentRole !== 'SUPER_ADMIN') return;
+            const tbody = document.getElementById('adminTableBody');
+            try {
+                const resp = await fetch('/api/admin/admins');
+                const data = await resp.json();
+                if (!Array.isArray(data) || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;">暂无数据</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(item => `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${escapeHtml(item.username)}</td>
+                        <td><span class="badge ${item.role==='SUPER_ADMIN'?'badge-super':'badge-admin'}">${item.role}</span></td>
+                        <td><span class="badge ${item.enabled?'badge-yes':'badge-no'}">${item.enabled?'启用':'禁用'}</span></td>
+                        <td>${formatDate(item.createdAt)}</td>
+                        <td>
+                            <button class="btn btn-warn btn-sm" onclick="toggleAdmin(${item.id})">${item.enabled?'禁用':'启用'}</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteAdmin(${item.id})">删除</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff5252;">加载失败</td></tr>';
+            }
+        }
+
+        async function createAdmin() {
+            const username = document.getElementById('newAdminUsername').value.trim();
+            const password = document.getElementById('newAdminPassword').value;
+            const role = document.getElementById('newAdminRole').value;
+            const errEl = document.getElementById('adminError');
+
+            if (!username || !password) {
+                errEl.textContent = '用户名和密码不能为空';
+                errEl.classList.add('show');
+                return;
+            }
+            errEl.classList.remove('show');
+
+            try {
+                const resp = await fetch('/api/admin/admins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role })
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    errEl.textContent = data.error || '创建失败';
+                    errEl.classList.add('show');
+                    return;
+                }
+                showToast('管理员创建成功');
+                document.getElementById('newAdminUsername').value = '';
+                document.getElementById('newAdminPassword').value = '';
+                loadAdmins();
+            } catch {
+                errEl.textContent = '网络错误';
+                errEl.classList.add('show');
+            }
+        }
+
+        async function toggleAdmin(id) {
+            try {
+                const resp = await fetch('/api/admin/admins/' + id + '/toggle', { method: 'PUT' });
+                if (resp.ok) {
+                    showToast('状态已切换');
+                    loadAdmins();
+                }
+            } catch {
+                showToast('操作失败');
+            }
+        }
+
+        async function deleteAdmin(id) {
+            if (!confirm('确定要删除该管理员吗？')) return;
+            try {
+                const resp = await fetch('/api/admin/admins/' + id, { method: 'DELETE' });
+                if (resp.ok) {
+                    showToast('已删除');
+                    loadAdmins();
+                } else {
+                    showToast('删除失败');
+                }
+            } catch {
+                showToast('网络错误');
+            }
+        }
+
+        // ========== Password Change ==========
+        async function changePassword() {
+            const oldPwd = document.getElementById('oldPassword').value;
+            const newPwd = document.getElementById('newPassword').value;
+            const errEl = document.getElementById('pwdError');
+
+            if (!oldPwd || !newPwd) {
+                errEl.textContent = '密码不能为空';
+                errEl.classList.add('show');
+                return;
+            }
+            errEl.classList.remove('show');
+
+            try {
+                const resp = await fetch('/api/admin/password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd })
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    errEl.textContent = data.error || '修改失败';
+                    errEl.classList.add('show');
+                    return;
+                }
+                showToast('密码修改成功');
+                document.getElementById('oldPassword').value = '';
+                document.getElementById('newPassword').value = '';
+            } catch {
+                errEl.textContent = '网络错误';
+                errEl.classList.add('show');
+            }
+        }
+
+        async function doLogout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+
+        // ========== Utilities ==========
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function formatDate(dateStr) {
+            try { const d = new Date(dateStr); return d.toLocaleString('zh-CN'); }
+            catch { return dateStr; }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        init();
+    </script>
+</body>
+</html>

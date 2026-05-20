@@ -525,6 +525,6 @@ spring.datasource.url=jdbc:mysql://${MYSQL_HOST:mysql}:${MYSQL_PORT:3306}/${MYSQ
 
 ---
 
-## License
+## 许可证
 
-MIT
+本项目基于 [MIT License](LICENSE)

@@ -10,11 +10,21 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
+  # 生产环境必须禁用 H2 控制台
+  h2:
+    console:
+      enabled: false
 
 server:
   port: 8080
   # 生产环境只监听内网，由 nginx 反向代理对外
   address: 127.0.0.1
+  servlet:
+    session:
+      cookie:
+        same-site: strict
+        secure: true
+        http-only: true
 
 # 信任反向代理头部
 shorturl:

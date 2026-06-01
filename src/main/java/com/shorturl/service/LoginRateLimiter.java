@@ -29,16 +29,18 @@ public class LoginRateLimiter {
             return false;
         }
         long now = System.currentTimeMillis();
-        // 如果在锁定期内，拒绝
-        if (record.lockedUntil > now) {
-            return true;
+        synchronized (record) {
+            // 如果在锁定期内，拒绝
+            if (record.lockedUntil > now) {
+                return true;
+            }
+            // 窗口过期，重置
+            if (now - record.windowStart > TimeUnit.SECONDS.toMillis(WINDOW_SECONDS)) {
+                records.remove(clientIp);
+                return false;
+            }
+            return record.failures >= MAX_ATTEMPTS;
         }
-        // 窗口过期，重置
-        if (now - record.windowStart > TimeUnit.SECONDS.toMillis(WINDOW_SECONDS)) {
-            records.remove(clientIp);
-            return false;
-        }
-        return record.failures >= MAX_ATTEMPTS;
     }
 
     public void recordFailure(String clientIp) {
@@ -49,18 +51,20 @@ public class LoginRateLimiter {
                 k -> new AttemptRecord(now)
         );
 
-        // 窗口过期则重置
-        if (now - record.windowStart > TimeUnit.SECONDS.toMillis(WINDOW_SECONDS)) {
-            record.windowStart = now;
-            record.failures = 0;
-        }
+        synchronized (record) {
+            // 窗口过期则重置
+            if (now - record.windowStart > TimeUnit.SECONDS.toMillis(WINDOW_SECONDS)) {
+                record.windowStart = now;
+                record.failures = 0;
+            }
 
-        record.failures++;
+            record.failures++;
 
-        if (record.failures >= MAX_ATTEMPTS) {
-            record.lockedUntil = now + TimeUnit.SECONDS.toMillis(LOCK_DURATION_SECONDS);
-            log.warn("登录暴力破解封锁: IP={}, 锁定至 {}",
-                    clientIp, new java.util.Date(record.lockedUntil));
+            if (record.failures >= MAX_ATTEMPTS) {
+                record.lockedUntil = now + TimeUnit.SECONDS.toMillis(LOCK_DURATION_SECONDS);
+                log.warn("登录暴力破解封锁: IP={}, 锁定至 {}",
+                        clientIp, new java.util.Date(record.lockedUntil));
+            }
         }
     }
 

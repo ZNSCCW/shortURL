@@ -1,6 +1,7 @@
 package com.shorturl.controller;
 
 import com.shorturl.model.UrlMapping;
+import com.shorturl.service.ShortenRateLimiter;
 import com.shorturl.service.UrlMappingService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @RestController
 public class UrlController {
@@ -27,7 +29,10 @@ public class UrlController {
 
     private static final String USER_ID_COOKIE = "suid";
 
+    private static final Pattern SHORT_CODE_PATTERN = Pattern.compile("^[a-zA-Z0-9]{1,10}$");
+
     private final UrlMappingService service;
+    private final ShortenRateLimiter shortenRateLimiter;
 
     /**
      * 是否信任反向代理头部。开发环境 false，生产环境在 application-prod.yml 中设为 true。
@@ -35,8 +40,9 @@ public class UrlController {
     @Value("${shorturl.trusted-proxy:false}")
     private boolean trustedProxy;
 
-    public UrlController(UrlMappingService service) {
+    public UrlController(UrlMappingService service, ShortenRateLimiter shortenRateLimiter) {
         this.service = service;
+        this.shortenRateLimiter = shortenRateLimiter;
     }
 
     /**
@@ -50,6 +56,14 @@ public class UrlController {
         if (originalUrl == null || originalUrl.isBlank()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "URL不能为空"));
+        }
+
+        String clientIp = getClientIp(request);
+
+        // 速率限制 + 计数原子化（消除 TOCTOU 竞态）
+        if (!shortenRateLimiter.tryConsume(clientIp)) {
+            return ResponseEntity.status(429)
+                    .body(Map.of("error", "请求过于频繁，请稍后重试"));
         }
 
         try {
@@ -97,6 +111,10 @@ public class UrlController {
      */
     @GetMapping("/s/{shortCode}")
     public ResponseEntity<Void> redirect(@PathVariable String shortCode) {
+        // 校验短码格式，拒绝非法字符（防路径遍历/注入）
+        if (shortCode == null || !SHORT_CODE_PATTERN.matcher(shortCode).matches()) {
+            return ResponseEntity.notFound().build();
+        }
         Optional<UrlMapping> result = service.getAndIncrementAccess(shortCode);
         if (result.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -115,6 +133,23 @@ public class UrlController {
     public ResponseEntity<?> history(HttpServletRequest request, HttpServletResponse response) {
         String userId = getOrCreateUserId(request, response);
         return ResponseEntity.ok(service.getUserHistory(userId));
+    }
+
+    /**
+     * 获取客户端 IP，支持反向代理。
+     */
+    private String getClientIp(HttpServletRequest request) {
+        if (trustedProxy) {
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+                return xForwardedFor.split(",")[0].strip();
+            }
+            String xRealIp = request.getHeader("X-Real-IP");
+            if (xRealIp != null && !xRealIp.isBlank()) {
+                return xRealIp.strip();
+            }
+        }
+        return request.getRemoteAddr();
     }
 
     private String getOrCreateUserId(HttpServletRequest request, HttpServletResponse response) {

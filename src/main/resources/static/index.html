@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短链接服务</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0c0c1d 0%, #1a1a3e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        /* Top nav */
+        .top-nav {
+            display: flex;
+            justify-content: flex-end;
+            padding: 1rem 2rem;
+            gap: 0.75rem;
+        }
+
+        .top-nav button {
+            padding: 0.5rem 1.2rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.25s;
+        }
+        .top-nav button:hover { background: rgba(255,255,255,0.12); }
+
+        .main-layout {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 0 2rem 2rem;
+            gap: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 680px;
+        }
+
+        .card {
+            background: rgba(30, 30, 60, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #6c63ff, #3f8efc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 0.85rem 1.2rem;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: #6c63ff;
+            background: rgba(108, 99, 255, 0.1);
+            box-shadow: 0 0 20px rgba(108, 99, 255, 0.15);
+        }
+
+        .input-group input::placeholder { color: #666; }
+
+        .btn {
+            padding: 0.85rem 1.8rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6c63ff, #3f8efc);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4);
+        }
+
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
+
+        .btn-sm {
+            padding: 0.45rem 0.9rem;
+            font-size: 0.8rem;
+            border-radius: 8px;
+        }
+
+        .btn-danger {
+            background: rgba(255, 82, 82, 0.2);
+            color: #ff5252;
+            border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+        .btn-danger:hover { background: rgba(255, 82, 82, 0.3); }
+
+        .result {
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-box .label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .result-box .value {
+            font-size: 1rem;
+            color: #fff;
+            word-break: break-all;
+        }
+
+        .result-box .short-link { color: #6c63ff; font-weight: 600; }
+
+        .result-box .actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .stats-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .stats-section h3 {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .stats-row input {
+            flex: 1;
+            padding: 0.6rem 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .stats-row input:focus { border-color: #3f8efc; }
+        .stats-row input::placeholder { color: #555; }
+
+        .stats-result {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.2rem;
+        }
+
+        .stats-result.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .stats-result .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stats-result .stat-item:last-child { border-bottom: none; }
+        .stats-result .stat-label { color: #888; font-size: 0.85rem; }
+        .stats-result .stat-value { color: #fff; font-size: 0.85rem; font-weight: 600; }
+        .stats-result .stat-value.count { color: #3f8efc; font-size: 1.1rem; }
+
+        .error-msg {
+            color: #ff5252;
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.2);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .error-msg.show { display: block; }
+
+        .toast {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: #2e7d32;
+            color: #fff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* History sidebar */
+        .history-panel {
+            width: 380px;
+            background: rgba(30, 30, 60, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-height: 85vh;
+            overflow-y: auto;
+            display: none;
+        }
+        .history-panel.show { display: block; }
+
+        .history-panel h3 {
+            color: #888;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .history-item {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .history-item .original { color: #aaa; word-break: break-all; margin-bottom: 0.3rem; }
+        .history-item .short { color: #6c63ff; font-weight: 600; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background: rgba(30, 30, 60, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 360px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .modal h2 {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            margin-bottom: 0.75rem;
+        }
+        .modal input:focus { border-color: #6c63ff; }
+
+        .modal .btn { width: 100%; margin-top: 0.5rem; }
+        .modal .close-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1.2rem;
+            float: right;
+        }
+
+        @media (max-width: 1100px) {
+            .main-layout { flex-direction: column; align-items: center; }
+            .history-panel { width: 100%; max-width: 680px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Nav -->
+    <div class="top-nav">
+        <button id="historyBtn" onclick="toggleHistory()">📋 我的记录</button>
+        <button id="loginBtn" onclick="showLoginModal()">🔐 管理员登录</button>
+        <button id="logoutBtn" style="display:none" onclick="doLogout()">退出</button>
+        <a id="adminLink" style="display:none" href="/admin.html"><button>⚙️ 管理面板</button></a>
+    </div>
+
+    <div class="main-layout">
+        <!-- Main Card -->
+        <div class="container">
+            <div class="card">
+                <h1>🔗 ShortURL</h1>
+                <p class="subtitle">长链接转短码 · 302 重定向 · 访问统计</p>
+
+                <div class="input-group">
+                    <input type="text" id="urlInput" placeholder="输入长链接，例如 https://example.com/very/long/url" autocomplete="off">
+                    <button class="btn btn-primary" id="shortenBtn" onclick="shortenUrl()">生成短链接</button>
+                </div>
+                <div class="error-msg" id="errorMsg"></div>
+
+                <div class="result" id="resultSection">
+                    <div class="result-box">
+                        <div class="label">短链接</div>
+                        <div class="value short-link" id="shortUrlDisplay"></div>
+                        <div class="actions">
+                            <button class="btn btn-secondary btn-sm" onclick="copyUrl()">📋 复制</button>
+                            <button class="btn btn-secondary btn-sm" onclick="openUrl()">🔗 打开</button>
+                        </div>
+                    </div>
+                    <div class="result-box">
+                        <div class="label">原始链接</div>
+                        <div class="value" id="originalUrlDisplay"></div>
+                    </div>
+                </div>
+
+                <div class="stats-section">
+                    <h3>📊 查询访问统计</h3>
+                    <div class="stats-row">
+                        <input type="text" id="statsCodeInput" placeholder="输入短码或完整短链接，例如 aB3xY9 或 http://localhost:8080/s/aB3xY9" autocomplete="off">
+                        <button class="btn btn-secondary" id="statsBtn" onclick="getStats()">查询</button>
+                    </div>
+                    <div class="stats-result" id="statsResult">
+                        <div class="stat-item">
+                            <span class="stat-label">短码</span>
+                            <span class="stat-value" id="statCode"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">原始链接</span>
+                            <span class="stat-value" id="statOriginalUrl"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">访问次数</span>
+                            <span class="stat-value count" id="statCount"></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">创建时间</span>
+                            <span class="stat-value" id="statCreatedAt"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Sidebar -->
+        <div class="history-panel" id="historyPanel">
+            <h3>📋 我创建的短链接</h3>
+            <div id="historyList"></div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal">
+            <button class="close-btn" onclick="closeLoginModal()">&times;</button>
+            <h2>🔐 管理员登录</h2>
+            <input type="text" id="loginUsername" placeholder="用户名" autocomplete="off">
+            <input type="password" id="loginPassword" placeholder="密码">
+            <div class="error-msg" id="loginError"></div>
+            <button class="btn btn-primary" id="loginSubmitBtn" onclick="doLogin()">登录</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let currentShortUrl = '';
+
+        // ========== URL Shortening ==========
+
+        async function shortenUrl() {
+            const input = document.getElementById('urlInput');
+            const btn = document.getElementById('shortenBtn');
+            const url = input.value.trim();
+
+            if (!url) { showError('请输入长链接'); return; }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>生成中...';
+            hideError();
+
+            try {
+                const resp = await fetch('/api/shorten', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    showError(data.error || '生成失败，请重试');
+                    return;
+                }
+
+                currentShortUrl = data.shortUrl;
+                document.getElementById('shortUrlDisplay').textContent = data.shortUrl;
+                document.getElementById('originalUrlDisplay').textContent = data.originalUrl;
+                document.getElementById('resultSection').classList.add('show');
+
+                if (data.accessCount > 0) {
+                    showToast('该链接已存在，已复用现有短码');
+                }
+
+                input.value = '';
+
+                // Refresh history if panel is open
+                if (document.getElementById('historyPanel').classList.contains('show')) {
+                    loadHistory();
+                }
+            } catch (err) {
+                showError('网络错误，请检查连接');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '生成短链接';
+            }
+        }
+
+        async function getStats() {
+            const input = document.getElementById('statsCodeInput');
+            const btn = document.getElementById('statsBtn');
+            const code = input.value.trim();
+
+            if (!code) { showError('请输入短码'); return; }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>查询中...';
+            hideError();
+
+            try {
+                const resp = await fetch('/api/stats?code=' + encodeURIComponent(code));
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    document.getElementById('statsResult').classList.remove('show');
+                    showError('未找到该短码');
+                    return;
+                }
+
+                document.getElementById('statCode').textContent = data.shortCode;
+                document.getElementById('statOriginalUrl').textContent = data.originalUrl;
+                document.getElementById('statCount').textContent = data.accessCount;
+                document.getElementById('statCreatedAt').textContent = formatDate(data.createdAt);
+                document.getElementById('statsResult').classList.add('show');
+            } catch (err) {
+                showError('网络错误，请检查连接');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '查询';
+            }
+        }
+
+        function copyUrl() {
+            navigator.clipboard.writeText(currentShortUrl).then(() => {
+                showToast('已复制到剪贴板');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = currentShortUrl;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('已复制到剪贴板');
+            });
+        }
+
+        function openUrl() { window.open(currentShortUrl, '_blank'); }
+
+        // ========== History ==========
+
+        async function loadHistory() {
+            const list = document.getElementById('historyList');
+            try {
+                const resp = await fetch('/api/history');
+                const data = await resp.json();
+                if (!Array.isArray(data) || data.length === 0) {
+                    list.innerHTML = '<p style="color:#666;font-size:0.85rem;">暂无记录</p>';
+                    return;
+                }
+                list.innerHTML = data.map(item => {
+                    const fullShortUrl = window.location.origin + '/s/' + item.shortCode;
+                    return `
+                    <div class="history-item">
+                        <div class="original">${escapeHtml(item.originalUrl)}</div>
+                        <div class="short"><a href="${escapeHtml(fullShortUrl)}" target="_blank" style="color:#6c63ff;text-decoration:none;">${escapeHtml(fullShortUrl)}</a></div>
+                    </div>
+                `;
+                }).join('');
+            } catch {
+                list.innerHTML = '<p style="color:#ff5252;font-size:0.85rem;">加载失败</p>';
+            }
+        }
+
+        function toggleHistory() {
+            const panel = document.getElementById('historyPanel');
+            if (panel.classList.contains('show')) {
+                panel.classList.remove('show');
+            } else {
+                panel.classList.add('show');
+                loadHistory();
+            }
+        }
+
+        // ========== Auth ==========
+
+        async function checkLoginStatus() {
+            try {
+                const resp = await fetch('/api/auth/me');
+                const data = await resp.json();
+                if (data.loggedIn) {
+                    document.getElementById('loginBtn').style.display = 'none';
+                    document.getElementById('logoutBtn').style.display = '';
+                    document.getElementById('adminLink').style.display = '';
+                } else {
+                    document.getElementById('loginBtn').style.display = '';
+                    document.getElementById('logoutBtn').style.display = 'none';
+                    document.getElementById('adminLink').style.display = 'none';
+                }
+            } catch {
+                // ignore
+            }
+        }
+
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.add('show');
+            document.getElementById('loginError').classList.remove('show');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('show');
+        }
+
+        async function doLogin() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginSubmitBtn');
+            const errEl = document.getElementById('loginError');
+
+            if (!username || !password) {
+                errEl.textContent = '用户名和密码不能为空';
+                errEl.classList.add('show');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>登录中...';
+            errEl.classList.remove('show');
+
+            try {
+                const resp = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    errEl.textContent = data.error || '登录失败';
+                    errEl.classList.add('show');
+                    return;
+                }
+                closeLoginModal();
+                showToast('登录成功');
+                checkLoginStatus();
+            } catch {
+                errEl.textContent = '网络错误';
+                errEl.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登录';
+            }
+        }
+
+        async function doLogout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            showToast('已退出登录');
+            checkLoginStatus();
+        }
+
+        // ========== Utilities ==========
+
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 4000);
+        }
+
+        function hideError() {
+            document.getElementById('errorMsg').classList.remove('show');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function formatDate(dateStr) {
+            try { const d = new Date(dateStr); return d.toLocaleString('zh-CN'); }
+            catch { return dateStr; }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Enter key shortcuts
+        document.getElementById('urlInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') shortenUrl();
+        });
+        document.getElementById('statsCodeInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') getStats();
+        });
+        document.getElementById('loginPassword').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') doLogin();
+        });
+
+        // Init
+        checkLoginStatus();
+
+        // Close modal on overlay click
+        document.getElementById('loginModal').addEventListener('click', function(e) {
+            if (e.target === this) closeLoginModal();
+        });
+    </script>
+</body>
+</html>

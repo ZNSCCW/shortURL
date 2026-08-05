@@ -1,0 +1,33 @@
+# ===================== 数据库文件 =====================
+data/
+*.db
+*.mv.db
+*.trace.db
+
+# ===================== Maven 编译产物 =====================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===================== IDE 配置 =====================
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# ===================== 系统文件 =====================
+Thumbs.db
+.DS_Store
+
+# ===================== 环境变量 / 密钥（敏感信息） =====================
+.env
+*.env.local
+*.env.production
+.env.*.local
+application-local.yml
+application-local.properties
+
+# ===================== 日志文件 =====================
+*.log
+logs/

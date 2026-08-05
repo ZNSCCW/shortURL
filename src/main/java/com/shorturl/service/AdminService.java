@@ -47,6 +47,7 @@ public class AdminService {
                         "DEFAULT_ADMIN_PASSWORD 环境变量未设置。请设置后重新启动。"
                 );
             }
+            validatePasswordStrength(defaultPassword);
             AdminUser admin = new AdminUser("admin", PasswordUtil.hash(defaultPassword), "SUPER_ADMIN");
             adminUserRepository.save(admin);
 
@@ -59,7 +60,9 @@ public class AdminService {
     }
 
     /**
-     * 管理员登录验证，返回用户信息（不含密码）
+     * 管理员登录验证，返回用户信息（不含密码）。
+     * 使用恒定时间验证策略防止用户枚举：当用户不存在时也会执行一次 BCrypt 哈希比较，
+     * 使得"用户存在但密码错误"和"用户不存在"两种情况的耗时趋于一致。
      */
     public Optional<AdminUser> authenticate(String username, String rawPassword) {
         Optional<AdminUser> user = adminUserRepository.findByUsername(username);
@@ -68,7 +71,12 @@ public class AdminService {
             if (u.isEnabled() && PasswordUtil.matches(rawPassword, u.getPasswordHash())) {
                 return Optional.of(u);
             }
+            return Optional.empty();
         }
+        // 用户不存在时，使用一个"不可能匹配"的 BCrypt hash 消耗时间
+        // 消除用户枚举的时序差异
+        PasswordUtil.matches(rawPassword,
+                "$2a$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
         return Optional.empty();
     }
 

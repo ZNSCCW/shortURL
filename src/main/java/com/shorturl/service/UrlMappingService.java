@@ -32,6 +32,14 @@ public class UrlMappingService {
     /** URL 最大长度，防止 DoS 和数据库截断 */
     private static final int MAX_URL_LENGTH = 2000;
 
+    /** 禁止的内网 IP 段前缀（用于 DNS 重绑定 / SSRF 防护） */
+    private static final java.util.regex.Pattern PRIVATE_IP_PATTERN = java.util.regex.Pattern.compile(
+            "https?://(127\\.|0\\.0\\.0\\.0|localhost" +
+            "|10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\." +
+            "|169\\.254\\.|100\\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\\.)", // 100.64.0.0/10 CGNAT
+            java.util.regex.Pattern.CASE_INSENSITIVE
+    );
+
     // ==================== 依赖 ====================
     private final SecureRandom random = new SecureRandom();
     private final UrlMappingRepository repository;
@@ -195,12 +203,20 @@ public class UrlMappingService {
 
         String lower = trimmed.toLowerCase(Locale.ROOT);
         if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
-            return "https://" + trimmed;
+            trimmed = "https://" + trimmed;
+        } else if (lower.startsWith("http://")) {
+            trimmed = "http://" + trimmed.substring(7);
+        } else {
+            trimmed = "https://" + trimmed.substring(8);
         }
-        if (lower.startsWith("http://")) {
-            return "http://" + trimmed.substring(7);
+        lower = trimmed.toLowerCase(Locale.ROOT);
+
+        // 禁止内网 IP / localhost（防 DNS 重绑定 / SSRF）
+        if (PRIVATE_IP_PATTERN.matcher(lower).find()) {
+            throw new RuntimeException("不允许使用内网地址或 localhost");
         }
-        return "https://" + trimmed.substring(8);
+
+        return trimmed;
     }
 
     /**
@@ -210,7 +226,7 @@ public class UrlMappingService {
      * @throws RuntimeException 重试耗尽时抛出
      */
     private String generateUniqueShortCode() {
-        int maxAttempts = 10;
+        int maxAttempts = 100;
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             String code = generateRandomCode();
             if (repository.findByShortCodeAndDeletedFalse(code).isEmpty()) {

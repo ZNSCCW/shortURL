@@ -114,6 +114,23 @@ short-url/
 
 ---
 
+## 测试
+
+单元测试 + 集成测试共 **29 项**（JUnit 5 + Mockito + AssertJ）：
+
+```bash
+mvn test
+```
+
+| 测试类 | 类型 | 覆盖内容 |
+|--------|------|----------|
+| `UrlMappingServiceTest` | 单元（Mockito） | URL 规范化与安全校验（危险协议 / 内网地址拦截）、短码生成与冲突重试、复用、访问计数、软删除 |
+| `UrlMappingServiceIntegrationTest` | 集成（H2 内存库） | 真实 JPA 持久化下的完整生命周期：创建 → 复用 → 计数 → 历史 → 软删除 |
+| `LoginRateLimiterTest` | 单元 | 防暴力破解：5 次失败封锁、成功解锁、IP 隔离 |
+| `ShortenRateLimiterTest` | 单元 | 创建限流：每分钟 60 次上限、IP 隔离 |
+
+---
+
 ## 快速开始
 
 ### 开发环境（H2 内嵌数据库）

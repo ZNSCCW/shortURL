@@ -31,3 +31,4 @@ application-local.properties
 # ===================== 日志文件 =====================
 *.log
 logs/
+short-url-*.txt

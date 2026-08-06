@@ -57,6 +57,26 @@ public class UrlController {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "URL不能为空"));
         }
+        // 协议白名单 + 格式校验：拒绝 javascript:/data:/vbscript: 等伪协议，
+        // 并避免非法 URL 在后续 URI 解析时抛异常
+        if (originalUrl.length() > 2048) {
+            return ResponseEntity.badRequest().body(Map.of("error", "URL 过长"));
+        }
+        try {
+            java.net.URI parsed = java.net.URI.create(originalUrl);
+            String scheme = parsed.getScheme();
+            if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "仅支持 http/https 协议"));
+            }
+            if (parsed.getHost() == null || parsed.getHost().isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "URL 缺少主机名"));
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "URL 格式非法"));
+        }
 
         String clientIp = getClientIp(request);
 

@@ -29,6 +29,10 @@ public interface UrlMappingRepository extends JpaRepository<UrlMapping, Long> {
     /** 查询所有未删除的短链接，按创建时间倒序 */
     List<UrlMapping> findAllByDeletedFalseOrderByCreatedAtDesc();
 
+    /** 分页查询所有未删除的短链接（管理员列表用，防止无界加载） */
+    org.springframework.data.domain.Page<UrlMapping> findByDeletedFalse(
+            org.springframework.data.domain.Pageable pageable);
+
     /** 原子递增访问计数（UPDATE，非 SELECT-then-UPDATE），返回受影响行数 */
     @Modifying(clearAutomatically = true)
     @Query("UPDATE UrlMapping m SET m.accessCount = m.accessCount + 1 WHERE m.shortCode = :code AND m.deleted = false")

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 
 /**
@@ -89,6 +90,10 @@ public class AdminService {
             throw new RuntimeException("用户名已存在");
         }
         validatePasswordStrength(rawPassword);
+        // 角色白名单：防止任意字符串写入 role 造成提权
+        if (role == null || !Set.of("ADMIN", "SUPER_ADMIN").contains(role)) {
+            throw new IllegalArgumentException("非法角色: " + role);
+        }
         AdminUser user = new AdminUser(username, PasswordUtil.hash(rawPassword), role);
         return adminUserRepository.save(user);
     }

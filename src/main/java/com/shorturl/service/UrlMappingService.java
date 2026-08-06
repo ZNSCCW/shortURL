@@ -157,6 +157,14 @@ public class UrlMappingService {
         return repository.findAllByDeletedFalseOrderByCreatedAtDesc();
     }
 
+    /** 分页获取活跃短链接（管理员列表用） */
+    public org.springframework.data.domain.Page<UrlMapping> getActivePaged(int page, int size) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        return repository.findByDeletedFalse(
+                org.springframework.data.domain.PageRequest.of(Math.max(page, 0), safeSize,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")));
+    }
+
     // ==================== 私有辅助方法 ====================
 
     /**

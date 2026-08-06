@@ -90,6 +90,9 @@ public class UrlMapping {
     }
 
     public void setAccessCount(Long accessCount) {
+        if (accessCount == null) {
+            throw new IllegalArgumentException("accessCount 不能为 null");
+        }
         this.accessCount = accessCount;
     }
 

@@ -17,6 +17,9 @@ public class PasswordUtil {
      * @return BCrypt 哈希字符串
      */
     public static String hash(String rawPassword) {
+        if (rawPassword == null) {
+            throw new IllegalArgumentException("rawPassword 不能为 null");
+        }
         return encoder.encode(rawPassword);
     }
 
@@ -28,6 +31,9 @@ public class PasswordUtil {
      * @return 是否匹配
      */
     public static boolean matches(String rawPassword, String hashedPassword) {
+        if (rawPassword == null || hashedPassword == null) {
+            return false;
+        }
         return encoder.matches(rawPassword, hashedPassword);
     }
 }

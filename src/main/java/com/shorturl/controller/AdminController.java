@@ -60,9 +60,12 @@ public class AdminController {
      * 查看所有短链接（管理员）
      */
     @GetMapping("/urls")
-    public ResponseEntity<List<UrlMapping>> getAllUrls(HttpServletRequest request) {
+    public ResponseEntity<List<UrlMapping>> getAllUrls(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request) {
         requireAdmin(request);
-        return ResponseEntity.ok(urlMappingService.getAllActive());
+        return ResponseEntity.ok(urlMappingService.getActivePaged(page, size).getContent());
     }
 
     /**

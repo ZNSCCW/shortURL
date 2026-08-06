@@ -11,6 +11,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -54,7 +56,9 @@ public class CsrfFilter implements Filter {
             String cookieToken = getCookieValue(request, CSRF_COOKIE);
             String headerToken = request.getHeader(CSRF_HEADER);
 
-            if (cookieToken == null || headerToken == null || !cookieToken.equals(headerToken)) {
+            if (cookieToken == null || headerToken == null
+                    || !MessageDigest.isEqual(cookieToken.getBytes(StandardCharsets.UTF_8),
+                    headerToken.getBytes(StandardCharsets.UTF_8))) {
                 response.setContentType("application/json;charset=UTF-8");
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.getWriter().write("{\"error\":\"CSRF 校验失败，请刷新页面后重试\"}");

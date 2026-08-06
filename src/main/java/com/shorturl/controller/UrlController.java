@@ -184,11 +184,13 @@ public class UrlController {
         String newId = UUID.randomUUID().toString();
         Cookie cookie = new Cookie(USER_ID_COOKIE, newId);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); // 生产环境应由 nginx 提供 HTTPS 再开启
+        // 信任代理头：X-Forwarded-Proto: https 时强制 Secure（SameSite=None 必须有 Secure 才会被浏览器接受）
+        boolean https = "https".equals(request.getScheme())
+                || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+        cookie.setSecure(https);
         cookie.setPath("/");
         cookie.setMaxAge(365 * 24 * 60 * 60); // 1 year
-        // 按请求的 scheme 设置 SameSite：HTTPS 用 None，否则用 Lax
-        cookie.setAttribute("SameSite", "https".equals(request.getScheme()) ? "None" : "Lax");
+        cookie.setAttribute("SameSite", https ? "None" : "Lax");
         response.addCookie(cookie);
         return newId;
     }
@@ -209,9 +211,10 @@ public class UrlController {
         } catch (Exception ignore) {
             // 解码失败就用原值
         }
-        String trimmed = input.trim();
+        // 先去掉末尾斜杠，避免 /s/abc123/ 解析成 abc123/
+        String trimmed = input.trim().replaceAll("/+$", "");
         int slashIdx = trimmed.lastIndexOf('/');
-        if (slashIdx >= 0 && slashIdx < trimmed.length() - 1) {
+        if (slashIdx >= 0) {
             trimmed = trimmed.substring(slashIdx + 1);
         }
         int qmIdx = trimmed.indexOf('?');

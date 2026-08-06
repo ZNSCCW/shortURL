@@ -20,8 +20,8 @@ public interface UrlMappingRepository extends JpaRepository<UrlMapping, Long> {
     /** 根据短码查找未删除记录 */
     Optional<UrlMapping> findByShortCodeAndDeletedFalse(String shortCode);
 
-    /** 根据原始长链接查找（用于复用检测） */
-    Optional<UrlMapping> findByOriginalUrl(String originalUrl);
+    /** 根据原始长链接查找（用于复用检测，只查未删除） */
+    Optional<UrlMapping> findByOriginalUrlAndDeletedFalse(String originalUrl);
 
     /** 查询某用户创建的未删除短链接，按创建时间倒序 */
     List<UrlMapping> findByCreatedByAndDeletedFalseOrderByCreatedAtDesc(String createdBy);
@@ -34,12 +34,12 @@ public interface UrlMappingRepository extends JpaRepository<UrlMapping, Long> {
             org.springframework.data.domain.Pageable pageable);
 
     /** 原子递增访问计数（UPDATE，非 SELECT-then-UPDATE），返回受影响行数 */
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE UrlMapping m SET m.accessCount = m.accessCount + 1 WHERE m.shortCode = :code AND m.deleted = false")
     int incrementAccessCount(@Param("code") String shortCode);
 
     /** 批量软删除（设置 deleted = true），返回受影响行数 */
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE UrlMapping m SET m.deleted = true WHERE m.shortCode IN :codes AND m.deleted = false")
     int batchSoftDelete(@Param("codes") Collection<String> shortCodes);
 }

@@ -40,7 +40,7 @@ class UrlMappingServiceTest {
 
     @Test
     void createShortUrl_shouldPrependHttpsWhenSchemeMissing() {
-        when(repository.findByOriginalUrl("https://example.com/abc")).thenReturn(Optional.empty());
+        when(repository.findByOriginalUrlAndDeletedFalse("https://example.com/abc")).thenReturn(Optional.empty());
         when(repository.save(any(UrlMapping.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UrlMapping result = service.createShortUrl("example.com/abc", "user1");
@@ -54,7 +54,7 @@ class UrlMappingServiceTest {
 
     @Test
     void createShortUrl_shouldNormalizeSchemeCase() {
-        when(repository.findByOriginalUrl("https://EXAMPLE.COM")).thenReturn(Optional.empty());
+        when(repository.findByOriginalUrlAndDeletedFalse("https://EXAMPLE.COM")).thenReturn(Optional.empty());
         when(repository.save(any(UrlMapping.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UrlMapping result = service.createShortUrl("HTTPS://EXAMPLE.COM", "u");
@@ -66,7 +66,7 @@ class UrlMappingServiceTest {
     @Test
     void createShortUrl_shouldReuseExistingMappingForSameUrl() {
         UrlMapping existing = new UrlMapping("abc123", "https://example.com");
-        when(repository.findByOriginalUrl("https://example.com")).thenReturn(Optional.of(existing));
+        when(repository.findByOriginalUrlAndDeletedFalse("https://example.com")).thenReturn(Optional.of(existing));
 
         UrlMapping result = service.createShortUrl("example.com", "u");
 
@@ -76,7 +76,7 @@ class UrlMappingServiceTest {
 
     @Test
     void createShortUrl_shouldRetryWhenShortCodeCollides() {
-        when(repository.findByOriginalUrl("https://example.com")).thenReturn(Optional.empty());
+        when(repository.findByOriginalUrlAndDeletedFalse("https://example.com")).thenReturn(Optional.empty());
         // 第一次生成的短码冲突，第二次成功
         when(repository.findByShortCodeAndDeletedFalse(anyString()))
                 .thenReturn(Optional.of(new UrlMapping("x1xxxx", "https://other.com")))
@@ -91,7 +91,7 @@ class UrlMappingServiceTest {
 
     @Test
     void createShortUrl_shouldDefaultCreatedByToAnonymous() {
-        when(repository.findByOriginalUrl("https://example.com")).thenReturn(Optional.empty());
+        when(repository.findByOriginalUrlAndDeletedFalse("https://example.com")).thenReturn(Optional.empty());
         when(repository.save(any(UrlMapping.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UrlMapping result = service.createShortUrl("https://example.com", null);

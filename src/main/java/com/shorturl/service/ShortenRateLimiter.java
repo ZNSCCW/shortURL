@@ -17,6 +17,7 @@ public class ShortenRateLimiter {
     private static final int MAX_REQUESTS = 60;           // 每分钟最多 60 次
     private static final long WINDOW_SECONDS = 60;         // 窗口 60 秒
     private static final long CLEAN_INTERVAL_SECONDS = 120; // 清理过期条目间隔
+    private static final int MAX_ENTRIES = 10_000;         // IP 条目上限，防伪造 IP 洪水耗尽堆内存
 
     private final ConcurrentHashMap<String, WindowCounter> counters = new ConcurrentHashMap<>();
     private volatile long lastCleanTime = System.currentTimeMillis();
@@ -31,6 +32,10 @@ public class ShortenRateLimiter {
     public boolean tryConsume(String clientIp) {
         cleanIfNeeded();
         long now = System.currentTimeMillis();
+        // 容量保护：条目数超上限时拒绝新 IP（旧条目会被 cleanIfNeeded 周期性清理）
+        if (counters.size() >= MAX_ENTRIES && !counters.containsKey(clientIp)) {
+            return false;
+        }
         WindowCounter counter = counters.computeIfAbsent(clientIp, k -> new WindowCounter(now));
         synchronized (counter) {
             long windowStart = counter.windowStart.get();

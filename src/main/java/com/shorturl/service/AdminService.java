@@ -24,6 +24,9 @@ public class AdminService {
 
     private final AdminUserRepository adminUserRepository;
 
+    /** 用户不存在时的时序均衡用假 hash（启动时生成，保证是有效 BCrypt） */
+    private static volatile String DUMMY_HASH = null;
+
     public AdminService(AdminUserRepository adminUserRepository) {
         this.adminUserRepository = adminUserRepository;
     }
@@ -75,9 +78,11 @@ public class AdminService {
             return Optional.empty();
         }
         // 用户不存在时，使用一个"不可能匹配"的 BCrypt hash 消耗时间
-        // 消除用户枚举的时序差异
-        PasswordUtil.matches(rawPassword,
-                "$2a$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+        // 消除用户枚举的时序差异（必须在启动时生成有效 hash，硬编码的 X 串是非法 BCrypt 会抛异常）
+        if (DUMMY_HASH == null) {
+            DUMMY_HASH = PasswordUtil.hash(java.util.UUID.randomUUID().toString());
+        }
+        PasswordUtil.matches(rawPassword, DUMMY_HASH);
         return Optional.empty();
     }
 
@@ -102,7 +107,7 @@ public class AdminService {
      * 删除管理员（不允许删除最后一个超级管理员）
      */
     @Transactional
-    public boolean deleteAdmin(Long id) {
+    public synchronized boolean deleteAdmin(Long id) {
         var opt = adminUserRepository.findById(id);
         if (opt.isEmpty()) {
             return false;
@@ -123,10 +128,15 @@ public class AdminService {
      * 禁用/启用管理员
      */
     @Transactional
-    public boolean toggleEnabled(Long id) {
+    public synchronized boolean toggleEnabled(Long id) {
         Optional<AdminUser> opt = adminUserRepository.findById(id);
         if (opt.isPresent()) {
             AdminUser user = opt.get();
+            // 要禁用的是超级管理员，且这是最后一个启用的超级管理员 → 拒绝
+            if ("SUPER_ADMIN".equals(user.getRole()) && user.isEnabled()
+                    && adminUserRepository.countByRoleAndEnabledTrue("SUPER_ADMIN") <= 1) {
+                throw new RuntimeException("不允许禁用最后一个超级管理员");
+            }
             user.setEnabled(!user.isEnabled());
             adminUserRepository.save(user);
             return true;

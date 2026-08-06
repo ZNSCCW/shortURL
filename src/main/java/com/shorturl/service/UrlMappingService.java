@@ -64,7 +64,7 @@ public class UrlMappingService {
         String normalizedUrl = normalizeUrl(originalUrl);
 
         // 检查是否已存在该长链接，存在则复用
-        Optional<UrlMapping> existing = repository.findByOriginalUrl(normalizedUrl);
+        Optional<UrlMapping> existing = repository.findByOriginalUrlAndDeletedFalse(normalizedUrl);
         if (existing.isPresent()) {
             return existing.get();
         }
@@ -153,6 +153,12 @@ public class UrlMappingService {
      *
      * @return 全部活跃短链接
      */
+    /** 客户端输入错误统一映射为 400，避免 Spring 默认 500 混淆 API 语义 */
+    private org.springframework.web.server.ResponseStatusException badRequest(String msg) {
+        return new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, msg);
+    }
+
     public List<UrlMapping> getAllActive() {
         return repository.findAllByDeletedFalseOrderByCreatedAtDesc();
     }
@@ -181,13 +187,13 @@ public class UrlMappingService {
      */
     private String normalizeUrl(String url) {
         if (url == null || url.isBlank()) {
-            throw new RuntimeException("URL不能为空");
+            throw badRequest("URL不能为空");
         }
 
         String trimmed = url.trim();
 
         if (trimmed.length() > MAX_URL_LENGTH) {
-            throw new RuntimeException("URL长度不能超过" + MAX_URL_LENGTH + "个字符");
+            throw badRequest("URL长度不能超过" + MAX_URL_LENGTH + "个字符");
         }
 
         int colonIdx = trimmed.indexOf(':');
@@ -199,13 +205,13 @@ public class UrlMappingService {
 
             if (isUrlScheme) {
                 if (!"http".equals(scheme) && !"https".equals(scheme)) {
-                    throw new RuntimeException("仅支持 HTTP/HTTPS URL");
+                    throw badRequest("仅支持 HTTP/HTTPS URL");
                 }
             } else {
                 if (BLOCKED_SCHEMES.contains(scheme)) {
-                    throw new RuntimeException("不允许的URL协议: " + scheme);
+                    throw badRequest("不允许的URL协议: " + scheme);
                 }
-                throw new RuntimeException("仅支持 HTTP/HTTPS URL");
+                throw badRequest("仅支持 HTTP/HTTPS URL");
             }
         }
 
@@ -221,7 +227,7 @@ public class UrlMappingService {
 
         // 禁止内网 IP / localhost（防 DNS 重绑定 / SSRF）
         if (PRIVATE_IP_PATTERN.matcher(lower).find()) {
-            throw new RuntimeException("不允许使用内网地址或 localhost");
+            throw badRequest("不允许使用内网地址或 localhost");
         }
 
         return trimmed;

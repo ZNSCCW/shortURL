@@ -1,5 +1,6 @@
 package com.shorturl.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -19,7 +20,8 @@ public class AdminUser {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    /** BCrypt 哈希后的密码，不可逆 */
+    /** BCrypt 哈希后的密码，不可逆（序列化时忽略，防泄露） */
+    @JsonIgnore
     @Column(nullable = false)
     private String passwordHash;
 

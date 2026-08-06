@@ -19,6 +19,7 @@ public class LoginRateLimiter {
     private static final int MAX_ATTEMPTS = 5;
     private static final long WINDOW_SECONDS = 60;
     private static final long LOCK_DURATION_SECONDS = 300; // 锁定 5 分钟
+    private static final int MAX_ENTRIES = 10_000; // IP 条目上限，防伪造 IP 洪水耗尽堆内存
 
     private final ConcurrentHashMap<String, AttemptRecord> records = new ConcurrentHashMap<>();
 
@@ -46,6 +47,10 @@ public class LoginRateLimiter {
     public void recordFailure(String clientIp) {
         cleanExpired();
         long now = System.currentTimeMillis();
+        // 容量保护：超上限拒绝新 IP
+        if (records.size() >= MAX_ENTRIES && !records.containsKey(clientIp)) {
+            return;
+        }
         AttemptRecord record = records.computeIfAbsent(
                 clientIp,
                 k -> new AttemptRecord(now)

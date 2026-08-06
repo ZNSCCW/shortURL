@@ -2,8 +2,11 @@ package com.shorturl.model;
 
 /**
  * 仅用于 Session 存储的轻量 DTO，不包含密码哈希。
+ * 实现 Serializable：容器钝化/集群复制 Session 时需要。
  */
-public class SessionUser {
+public class SessionUser implements java.io.Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private final Long id;
     private final String username;

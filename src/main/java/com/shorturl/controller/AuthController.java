@@ -63,7 +63,8 @@ public class AuthController {
             HttpSession session = request.getSession(true);
             // 只存不含密码的轻量 DTO
             session.setAttribute(SESSION_KEY, new SessionUser(user));
-            session.setMaxInactiveInterval(-1);
+            // 30 分钟无操作自动过期，避免会话永久有效被劫持
+            session.setMaxInactiveInterval(30 * 60);
 
             // 登录成功，清除失败记录
             rateLimiter.clearOnSuccess(clientIp);

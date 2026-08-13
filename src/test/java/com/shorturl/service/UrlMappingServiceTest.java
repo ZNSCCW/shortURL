@@ -77,8 +77,8 @@ class UrlMappingServiceTest {
     @Test
     void createShortUrl_shouldRetryWhenShortCodeCollides() {
         when(repository.findByOriginalUrlAndDeletedFalse("https://example.com")).thenReturn(Optional.empty());
-        // 第一次生成的短码冲突，第二次成功
-        when(repository.findByShortCodeAndDeletedFalse(anyString()))
+        // 第一次生成的短码冲突，第二次成功（判重必须覆盖已软删除记录，故 mock findByShortCode）
+        when(repository.findByShortCode(anyString()))
                 .thenReturn(Optional.of(new UrlMapping("x1xxxx", "https://other.com")))
                 .thenReturn(Optional.empty());
         when(repository.save(any(UrlMapping.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -86,7 +86,7 @@ class UrlMappingServiceTest {
         UrlMapping result = service.createShortUrl("https://example.com", "u");
 
         assertThat(result.getShortCode()).hasSize(6);
-        verify(repository, times(2)).findByShortCodeAndDeletedFalse(anyString());
+        verify(repository, times(2)).findByShortCode(anyString());
     }
 
     @Test

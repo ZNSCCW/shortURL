@@ -20,6 +20,9 @@ public interface UrlMappingRepository extends JpaRepository<UrlMapping, Long> {
     /** 根据短码查找未删除记录 */
     Optional<UrlMapping> findByShortCodeAndDeletedFalse(String shortCode);
 
+    /** 根据短码查找任意记录（含已软删除）——短码唯一性判重必须用此方法，防止复用已删除的短码 */
+    Optional<UrlMapping> findByShortCode(String shortCode);
+
     /** 根据原始长链接查找（用于复用检测，只查未删除） */
     Optional<UrlMapping> findByOriginalUrlAndDeletedFalse(String originalUrl);
 

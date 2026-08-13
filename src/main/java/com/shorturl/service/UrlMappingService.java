@@ -243,7 +243,8 @@ public class UrlMappingService {
         int maxAttempts = 100;
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             String code = generateRandomCode();
-            if (repository.findByShortCodeAndDeletedFalse(code).isEmpty()) {
+            // 判重必须覆盖已软删除记录：短码一旦分配永不复用，否则老链接会突然指向新内容
+            if (repository.findByShortCode(code).isEmpty()) {
                 return code;
             }
         }

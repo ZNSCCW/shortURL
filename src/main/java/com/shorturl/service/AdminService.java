@@ -24,8 +24,12 @@ public class AdminService {
 
     private final AdminUserRepository adminUserRepository;
 
-    /** 用户不存在时的时序均衡用假 hash（启动时生成，保证是有效 BCrypt） */
-    private static volatile String DUMMY_HASH = null;
+    /**
+     * 用户不存在时的时序均衡用假 hash（类加载时生成，保证是有效 BCrypt）。
+     * 必须启动时初始化而非懒加载：懒初始化会让"第一次用户不存在请求"额外承担哈希生成耗时，
+     * 与其他请求产生可区分的时序差异，削弱防枚举效果。
+     */
+    private static final String DUMMY_HASH = PasswordUtil.hash(java.util.UUID.randomUUID().toString());
 
     public AdminService(AdminUserRepository adminUserRepository) {
         this.adminUserRepository = adminUserRepository;
@@ -78,10 +82,7 @@ public class AdminService {
             return Optional.empty();
         }
         // 用户不存在时，使用一个"不可能匹配"的 BCrypt hash 消耗时间
-        // 消除用户枚举的时序差异（必须在启动时生成有效 hash，硬编码的 X 串是非法 BCrypt 会抛异常）
-        if (DUMMY_HASH == null) {
-            DUMMY_HASH = PasswordUtil.hash(java.util.UUID.randomUUID().toString());
-        }
+        // 消除用户枚举的时序差异（DUMMY_HASH 在类加载时生成，保证是有效 BCrypt；硬编码的 X 串是非法 BCrypt 会抛异常）
         PasswordUtil.matches(rawPassword, DUMMY_HASH);
         return Optional.empty();
     }

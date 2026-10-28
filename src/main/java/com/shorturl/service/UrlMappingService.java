@@ -2,6 +2,9 @@ package com.shorturl.service;
 
 import com.shorturl.model.UrlMapping;
 import com.shorturl.repository.UrlMappingRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +22,14 @@ import java.util.Set;
 @Service
 public class UrlMappingService {
 
+    private static final Logger log = LoggerFactory.getLogger(UrlMappingService.class);
+
     // ==================== 短码生成相关常量 ====================
     private static final String CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODE_LENGTH = 6;
+
+    /** 命中短码唯一约束后，最多换码重试的次数 */
+    private static final int MAX_INSERT_ATTEMPTS = 3;
 
     // ==================== URL 安全校验常量 ====================
     /** 被禁止的危险协议 scheme */
@@ -53,13 +61,16 @@ public class UrlMappingService {
     /**
      * 创建短链接。
      * 先规范化并校验原始 URL，若已存在相同长链接则直接复用已有短码，
-     * 否则生成新的 6 位唯一短码并持久化。
+     * 否则生成新的 6 位短码并持久化。
+     *
+     * <p>这里刻意不加 {@code @Transactional}：每次 INSERT 各自独立提交，
+     * 短码唯一键冲突时才能只回滚这一次尝试、再换个短码重试；
+     * 若包在外层事务里，唯一键异常会把整个事务标记成 rollback-only，重试必然失败。
      *
      * @param originalUrl 原始长链接
      * @param createdBy   创建者标识（anonymous 兜底）
      * @return 创建的或已有的 UrlMapping
      */
-    @Transactional
     public UrlMapping createShortUrl(String originalUrl, String createdBy) {
         String normalizedUrl = normalizeUrl(originalUrl);
 
@@ -69,10 +80,24 @@ public class UrlMappingService {
             return existing.get();
         }
 
-        String shortCode = generateUniqueShortCode();
-        UrlMapping mapping = new UrlMapping(shortCode, normalizedUrl);
-        mapping.setCreatedBy(createdBy != null ? createdBy : "anonymous");
-        return repository.save(mapping);
+        String creator = createdBy != null ? createdBy : "anonymous";
+        for (int attempt = 1; attempt <= MAX_INSERT_ATTEMPTS; attempt++) {
+            String shortCode = generateUniqueShortCode();
+            UrlMapping mapping = new UrlMapping(shortCode, normalizedUrl);
+            mapping.setCreatedBy(creator);
+            try {
+                return repository.save(mapping);
+            } catch (DataIntegrityViolationException conflict) {
+                // 概率极低：两个并发请求同时选中同一个短码，被唯一约束拦下。
+                // 先确认是不是并发请求已经为同一个长链接建好了记录，是就直接复用。
+                Optional<UrlMapping> raced = repository.findByOriginalUrlAndDeletedFalse(normalizedUrl);
+                if (raced.isPresent()) {
+                    return raced.get();
+                }
+                log.warn("短码唯一键冲突，换码重试: attempt={}/{}", attempt, MAX_INSERT_ATTEMPTS);
+            }
+        }
+        throw new IllegalStateException("短码分配失败，请稍后重试");
     }
 
     /**
@@ -235,12 +260,14 @@ public class UrlMappingService {
 
     /**
      * 生成唯一短码，带重试机制（最多尝试 10 次）。
+     * 62^6 ≈ 568 亿的码空间下，10 次连续撞码的概率可以忽略；
+     * 这里是「预检」，真正的并发兜底是 short_code 上的唯一约束 + 上层换码重试。
      *
      * @return 6 位唯一短码
      * @throws RuntimeException 重试耗尽时抛出
      */
     private String generateUniqueShortCode() {
-        int maxAttempts = 100;
+        int maxAttempts = 10;
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             String code = generateRandomCode();
             // 判重必须覆盖已软删除记录：短码一旦分配永不复用，否则老链接会突然指向新内容

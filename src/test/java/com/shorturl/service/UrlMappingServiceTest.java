@@ -4,6 +4,7 @@ import com.shorturl.model.UrlMapping;
 import com.shorturl.repository.UrlMappingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Collections;
 import java.util.List;
@@ -87,6 +88,38 @@ class UrlMappingServiceTest {
 
         assertThat(result.getShortCode()).hasSize(6);
         verify(repository, times(2)).findByShortCode(anyString());
+    }
+
+    @Test
+    void createShortUrl_shouldRetryOnUniqueConstraintViolation() {
+        when(repository.findByOriginalUrlAndDeletedFalse("https://example.com")).thenReturn(Optional.empty());
+        when(repository.findByShortCode(anyString())).thenReturn(Optional.empty());
+        // 预检没发现冲突（并发窗口），INSERT 时被唯一约束拦下 → 换码重试一次后成功
+        when(repository.save(any(UrlMapping.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate entry for key 'uk_short_code'"))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        UrlMapping result = service.createShortUrl("https://example.com", "u");
+
+        assertThat(result.getShortCode()).hasSize(6);
+        verify(repository, times(2)).save(any(UrlMapping.class));
+    }
+
+    @Test
+    void createShortUrl_shouldReuseRacedMappingInsteadOfCreatingDuplicate() {
+        UrlMapping raced = new UrlMapping("zz9999", "https://example.com");
+        // 第一次查不到（并发请求还没提交），INSERT 撞唯一约束后复查能查到
+        when(repository.findByOriginalUrlAndDeletedFalse("https://example.com"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(raced));
+        when(repository.findByShortCode(anyString())).thenReturn(Optional.empty());
+        when(repository.save(any(UrlMapping.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate entry"));
+
+        UrlMapping result = service.createShortUrl("https://example.com", "u");
+
+        assertThat(result).isSameAs(raced);
+        verify(repository, times(1)).save(any(UrlMapping.class));
     }
 
     @Test

@@ -96,7 +96,10 @@ short-url/
     │   ├── service/
     │   │   ├── UrlMappingService.java # 短链接业务逻辑
     │   │   ├── AdminService.java      # 管理员业务逻辑（含初始化）
-    │   │   └── LoginRateLimiter.java  # 登录速率限制
+    │   │   ├── LoginRateLimiter.java  # 登录速率限制
+    │   │   └── ShortenRateLimiter.java# 创建限流（60 次/分钟/IP）
+    │   ├── filter/
+    │   │   └── CsrfFilter.java        # CSRF 防护（管理端 Cookie 会话）
     │   ├── controller/
     │   │   ├── UrlController.java     # 公开 API（缩短、重定向、统计、历史）
     │   │   ├── AuthController.java    # 认证 API（登录/登出/状态）
@@ -370,7 +373,7 @@ Content-Type: application/json
 ### 认证与授权
 
 - **密码**：BCrypt 哈希存储，原始密码不落盘、不传输
-- **Session**：登录成功后 Session 持久化（`setMaxInactiveInterval(-1)`），不存密码 Hash，仅存轻量 DTO（`SessionUser`：id / username / role / enabled）
+- **Session**：登录成功后 Session 30 分钟无操作过期（`setMaxInactiveInterval(30*60)`，与 `server.servlet.session.timeout=30m` 一致），不存密码 Hash，仅存轻量 DTO（`SessionUser`：id / username / role / enabled）
 - **防 Session 固定**：每次登录前 `invalidate()` 旧 Session，创建全新 Session ID
 - **角色控制**：Controller 方法级鉴权，`requireAdmin()` / `requireSuperAdmin()`
 
@@ -429,8 +432,8 @@ mysql> SHOW TABLES;
 +----------------------+
 | Tables_in_shorturl   |
 +----------------------+
-| admin_users          |  管理员表（username, bcrypt 密码哈希, role, enabled, deleted）
-| url_mappings         |  短链接表（originalUrl, shortCode, accessCount, createdBy, deleted）
+| admin_user           |  管理员表（username, bcrypt 密码哈希, role, enabled, deleted）
+| url_mapping          |  短链接表（originalUrl, shortCode, accessCount, createdBy, deleted）
 +----------------------+
 ```
 
